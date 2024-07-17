@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """ expiring web cache module """
 
-
 import redis
 import uuid
 from typing import Union, Callable, Optional
 import functools
-
 
 def count_calls(method: Callable) -> Callable:
     @functools.wraps(method)
@@ -15,7 +13,6 @@ def count_calls(method: Callable) -> Callable:
         self._redis.incr(key)
         return method(self, *args, **kwargs)
     return wrapper
-
 
 def call_history(method: Callable) -> Callable:
     @functools.wraps(method)
@@ -33,6 +30,23 @@ def call_history(method: Callable) -> Callable:
         return result
     return wrapper
 
+def replay(method: Callable) -> None:
+    """Display the history of calls of a particular function."""
+    redis_instance = method.__self__._redis
+    method_name = method.__qualname__
+
+    input_key = method_name + ":inputs"
+    output_key = method_name + ":outputs"
+
+    inputs = redis_instance.lrange(input_key, 0, -1)
+    outputs = redis_instance.lrange(output_key, 0, -1)
+
+    print(f"{method_name} was called {len(inputs)} times:")
+
+    for input_data, output_data in zip(inputs, outputs):
+        input_args = input_data.decode('utf-8')
+        output_value = output_data.decode('utf-8')
+        print(f"{method_name}(*{input_args}) -> {output_value}")
 
 class Cache:
     def __init__(self):
@@ -46,7 +60,7 @@ class Cache:
         self._redis.set(key, data)
         return key
 
-    def get(self, key: str, fn: Optional[Callable[[bytes],Union[str, int, float]]] = None) -> Optional[Union[str, int, float]]:
+    def get(self, key: str, fn: Optional[Callable[[bytes], Union[str, int, float]]] = None) -> Optional[Union[str, int, float]]:
         data = self._redis.get(key)
         if data is None:
             return None
@@ -70,4 +84,5 @@ class Cache:
 
     def get_output_history(self, method_name: str) -> list:
         output_key = method_name + ":outputs"
-        return self._redis.lrange(output_key, 0, -1
+        return self._redis.lrange(output_key, 0, -1)
+
