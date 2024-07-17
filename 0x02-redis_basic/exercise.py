@@ -7,6 +7,7 @@ import uuid
 from typing import Union, Callable, Optional
 import functools
 
+
 def count_calls(method: Callable) -> Callable:
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
@@ -14,6 +15,7 @@ def count_calls(method: Callable) -> Callable:
         self._redis.incr(key)
         return method(self, *args, **kwargs)
     return wrapper
+
 
 def call_history(method: Callable) -> Callable:
     @functools.wraps(method)
@@ -31,6 +33,7 @@ def call_history(method: Callable) -> Callable:
         return result
     return wrapper
 
+
 class Cache:
     def __init__(self):
         self._redis = redis.Redis()
@@ -43,7 +46,7 @@ class Cache:
         self._redis.set(key, data)
         return key
 
-    def get(self, key: str, fn: Optional[Callable[[bytes], Union[str, int, float]]] = None) -> Optional[Union[str, int, float]]:
+    def get(self, key: str, fn: Optional[Callable[[bytes],Union[str, int, float]]] = None) -> Optional[Union[str, int, float]]:
         data = self._redis.get(key)
         if data is None:
             return None
@@ -68,4 +71,3 @@ class Cache:
     def get_output_history(self, method_name: str) -> list:
         output_key = method_name + ":outputs"
         return self._redis.lrange(output_key, 0, -1
-
